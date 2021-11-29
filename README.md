@@ -16,7 +16,7 @@ ablation, generalization, teach eval, etc...
 ### student
 main impl of classroom-net framework (see design image in group chat) \
 don't worry about stuff in red shape in design image (precompute) since dataset will deal with that \
-dataset will give a dataloader which will produce ((x, x_1, x_2...), y) where x_i are aux inputs, x input rgb image, y depth map
+impl dataloader(dataset) which produces ((x, x_1, x_2...), y) where x_i are aux inputs, x input rgb image, y depth map
 
 ### utils
 put util functions here e.g. func that compute recall and precision
