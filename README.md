@@ -1,12 +1,12 @@
 # classroom-net
 
 ## datalake
-build will populate the datalake with waymo data (rgb, range, camera transformations)
-build will call pretrained models
+build will populate the datalake with waymo data (rgb, range, camera transformations) \\
+build will call pretrained models \\
 dataset will define dataset class and allow downstream to query for respective data
 
 ## teachers
-pretrained model implementations
+pretrained model implementations \\
 each impl should provide function that takes in data and outputs result
 
 ## main framework
