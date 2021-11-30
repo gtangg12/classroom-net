@@ -21,3 +21,8 @@ certain data augmentation transformations may not be accurate due to fusing of 3
 
 ### utils
 put util functions here e.g. func that compute recall and precision
+
+### main
+pull waymo raw data to datalake
+run teachers and store in datalake
+run student model and experiments
