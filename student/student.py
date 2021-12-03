@@ -51,7 +51,7 @@ class SimulatedModule(nn.Module):
 
 
 class StudentModule(nn.Module):
-    def __init__(self, num_teachers, feature_dim, statistics_list, out_channels=96): # feature_dim should be 512 with resnet18
+    def __init__(self, num_teachers, feature_dim, statistics_list): # feature_dim should be 512 with resnet18
         super().__init__()
         self.num_teachers = num_teachers
         self.resnet = resnet18()
@@ -65,23 +65,12 @@ class StudentModule(nn.Module):
             nn.BatchNorm2d(96*2),
             nn.ReLU(inplace=True)
         )
-
-        self.cls2 = nn.Sequential(
-            nn.Conv2d(96*2+96*self.num_teachers, out_channels, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-        )
     
     def forward(self, x):
         x = self.resnet18(x)
         z_list, z_to_train_list = zip(*[sim_module(x) for sim_module in self.sim_module_list])
         x = self.cls1(x)
-        z = torch.cat([x]+z_list, 1)
-        z = self.cls2(z)
+        z_dict = {'0': x}
+        z_dict.update({str(i+1): z_list[i] for i in range(self.num_teachers)})
 
-        return z, z_to_train_list
-
-
-class FasterRCNNModule(nn.Module):
-    def __init__(self, in_channels=96):
-        super().__init__()
+        return z_dict, z_to_train_list

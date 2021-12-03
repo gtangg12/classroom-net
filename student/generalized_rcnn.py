@@ -11,12 +11,11 @@ from torch import nn, Tensor
 
 # from ...utils import _log_api_usage_once
 
-# TODO: code the head lmfao
-
 
 class GeneralizedRCNN(nn.Module):
     """
     Main class for Generalized R-CNN.
+
     Args:
         backbone (nn.Module):
         rpn (nn.Module):
@@ -50,11 +49,13 @@ class GeneralizedRCNN(nn.Module):
         Args:
             images (list[Tensor]): images to be processed
             targets (list[Dict[str, Tensor]]): ground-truth boxes present in the image (optional)
+
         Returns:
             result (list[BoxList] or dict[Tensor]): the output from the model.
                 During training, it returns a dict[Tensor] which contains the losses.
                 During testing, it returns list[BoxList] contains additional fields
                 like `scores`, `labels` and `mask` (for Mask R-CNN models).
+
         """
         if self.training and targets is None:
             raise ValueError("In training mode, targets should be passed")
@@ -91,7 +92,7 @@ class GeneralizedRCNN(nn.Module):
                         f" Found invalid box {degen_bb} for target at index {target_idx}."
                     )
 
-        features = self.backbone(images.tensors)
+        features, z_to_train_list = self.backbone(images.tensors)
         if isinstance(features, torch.Tensor):
             features = OrderedDict([("0", features)])
         proposals, proposal_losses = self.rpn(images, features, targets)
@@ -106,6 +107,6 @@ class GeneralizedRCNN(nn.Module):
             if not self._has_warned:
                 warnings.warn("RCNN always returns a (Losses, Detections) tuple in scripting")
                 self._has_warned = True
-            return losses, detections
+            return losses, detections, z_to_train_list
         else:
-            return self.eager_outputs(losses, detections)
+            return self.eager_outputs(losses, detections), z_to_train_list
