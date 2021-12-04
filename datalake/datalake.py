@@ -19,7 +19,7 @@ class Datalake(Dataset):
 
             William add ur feature names
 
-            check for bugs tmrw 
+            check for bugs tmrw
         """
         self.num_data = num_data
         self.datatypes = datatypes
