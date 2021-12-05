@@ -7,13 +7,12 @@ from torchvision.ops import MultiScaleRoIAlign
 # from ..mobilenetv3 import mobilenet_v3_large
 # from ..resnet import resnet50
 # from ._utils import overwrite_eps
-from anchor_utils import AnchorGenerator
+from utils.anchor_utils import AnchorGenerator
 # from .backbone_utils import _resnet_fpn_extractor, _validate_trainable_layers, _mobilenet_extractor
-from backbone_utils import StudentBackbone
-from generalized_rcnn import GeneralizedRCNN
-from roi_heads import RoIHeads
-from rpn import RPNHead, RegionProposalNetwork
-from transform import GeneralizedRCNNTransform
+from faster_rcnn.generalized_rcnn import GeneralizedRCNN
+from faster_rcnn.roi_heads import RoIHeads
+from faster_rcnn.rpn import RPNHead, RegionProposalNetwork
+from faster_rcnn.transform import GeneralizedRCNNTransform
 
 
 class FasterRCNN(GeneralizedRCNN):
@@ -300,11 +299,3 @@ class FastRCNNPredictor(nn.Module):
         depths = self.depth_pred(x)
 
         return scores, bbox_deltas, depths
-
-
-# feature_dim should be 512, in_channels_list should be [192, 96, 96, ...], out_channels (512? can probably be anything)
-def create_classroom_net(num_teachers, feature_dim, statistics_list, in_channels_list, out_channels, num_classes, **kwargs):
-    backbone = StudentBackbone(num_teachers, feature_dim, statistics_list, in_channels_list, out_channels)
-    model = FasterRCNN(backbone, num_classes, **kwargs)
-
-    return model
