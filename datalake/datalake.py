@@ -6,6 +6,7 @@ import torch
 from torch.utils.data import Dataset
 
 RAW_DATA_TYPES = ['image, bounding_boxes, object_classes, object_depths, image_point_cloud_map']
+TEACHER_DATA_TYPES = []
 
 class Datalake(Dataset):
     def __init__(self, num_data, data_types, path):
