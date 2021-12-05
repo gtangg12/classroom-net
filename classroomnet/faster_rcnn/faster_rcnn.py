@@ -7,12 +7,12 @@ from torchvision.ops import MultiScaleRoIAlign
 # from ..mobilenetv3 import mobilenet_v3_large
 # from ..resnet import resnet50
 # from ._utils import overwrite_eps
-from utils.anchor_utils import AnchorGenerator
+from classroomnet.utils.anchor_utils import AnchorGenerator
 # from .backbone_utils import _resnet_fpn_extractor, _validate_trainable_layers, _mobilenet_extractor
-from faster_rcnn.generalized_rcnn import GeneralizedRCNN
-from faster_rcnn.roi_heads import RoIHeads
-from faster_rcnn.rpn import RPNHead, RegionProposalNetwork
-from faster_rcnn.transform import GeneralizedRCNNTransform
+from classroomnet.faster_rcnn.generalized_rcnn import GeneralizedRCNN
+from classroomnet.faster_rcnn.roi_heads import RoIHeads
+from classroomnet.faster_rcnn.rpn import RPNHead, RegionProposalNetwork
+from classroomnet.faster_rcnn.transform import GeneralizedRCNNTransform
 
 
 class FasterRCNN(GeneralizedRCNN):

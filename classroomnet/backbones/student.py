@@ -2,7 +2,7 @@ import torch
 import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
-from backbones.models.resnet import resnet18
+from classroomnet.backbones.models.resnet import resnet18
 
 class SimulatedModule(nn.Module):
     def __init__(self, feature_dim, statistics):

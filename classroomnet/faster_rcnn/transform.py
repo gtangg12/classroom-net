@@ -5,8 +5,8 @@ import torch
 import torchvision
 from torch import nn, Tensor
 
-from utils.image_list import ImageList
-from faster_rcnn.roi_heads import paste_masks_in_image
+from classroomnet.utils.image_list import ImageList
+from classroomnet.faster_rcnn.roi_heads import paste_masks_in_image
 
 
 @torch.jit.unused

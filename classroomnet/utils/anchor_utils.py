@@ -4,7 +4,7 @@ from typing import List, Optional
 import torch
 from torch import nn, Tensor
 
-from utils.image_list import ImageList
+from classroomnet.utils.image_list import ImageList
 
 
 class AnchorGenerator(nn.Module):

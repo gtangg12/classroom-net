@@ -5,7 +5,7 @@ from torch import nn, Tensor
 from torchvision.ops import misc as misc_nn_ops
 from torchvision.ops.feature_pyramid_network import FeaturePyramidNetwork, LastLevelMaxPool, ExtraFPNBlock
 
-from backbones.student import StudentModule
+from classroomnet.backbones.student import StudentModule
 
 # from .. import mobilenet
 # from .. import resnet

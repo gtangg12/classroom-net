@@ -7,7 +7,7 @@ from torch import nn, Tensor
 from torchvision.ops import boxes as box_ops
 from torchvision.ops import roi_align
 
-import utils._utils as det_utils
+import classroomnet.utils._utils as det_utils
 
 
 def fastrcnn_loss(class_logits, box_regression, labels, regression_targets):

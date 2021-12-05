@@ -6,11 +6,11 @@ from torch import nn, Tensor
 from torch.nn import functional as F
 from torchvision.ops import boxes as box_ops
 
-import utils._utils as det_utils
+import classroomnet.utils._utils as det_utils
 
 # Import AnchorGenerator to keep compatibility.
-from utils.anchor_utils import AnchorGenerator  # noqa: 401
-from utils.image_list import ImageList
+from classroomnet.utils.anchor_utils import AnchorGenerator  # noqa: 401
+from classroomnet.utils.image_list import ImageList
 
 
 @torch.jit.unused
