@@ -2,6 +2,7 @@ import torch
 import torchvision
 
 MODEL = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
+MODEL.eval()
 
 
 def images_to_masks(images):
@@ -29,7 +30,8 @@ def generate_and_store_masks(root_dir):
     """
     Generates and stores all masks
     """
-    
+    pass
+
     
 
 
