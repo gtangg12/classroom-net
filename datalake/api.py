@@ -1,21 +1,26 @@
 import os
 import time
 
-frames_path = 'waymo_open_dataset/frames/training_training_0000/segment-1005081002024129653_5313_150_5333_150_with_camera_labels.tfrecord'
+#frames_path = 'waymo_open_dataset/frames/training_training_0000/segment-1005081002024129653_5313_150_5333_150_with_camera_labels.tfrecord'
 
 import numpy as np
 import tensorflow as tf
 
+import sys
+from pathlib import Path
+sys.path.append(Path(__file__).resolve().parents[1])
+
 from waymo_open_dataset.utils import frame_utils
 from waymo_open_dataset.formats import dataset_pb2 as open_dataset
 
+"""
 dataset = tf.data.TFRecordDataset(frames_path, compression_type='')
 
 for data in dataset:
     frame = open_dataset.Frame()
     frame.ParseFromString(bytearray(data.numpy()))
     break
-
+"""
 
 def get_front_image(frame):
     return tf.image.decode_jpeg(frame.images[0].image).numpy()
@@ -49,4 +54,4 @@ def get_point_cloud_front_image_mapping(frame):
     return tf.concat(
         [points_all_tensor, cp_points_all_tensor[..., 1:3]], axis=-1).numpy()
 
-print(get_point_cloud_front_image_mapping(frame))
+#print(get_point_cloud_front_image_mapping(frame))
