@@ -44,7 +44,7 @@ class Datalake(Dataset):
             features = np.load(self.teacher_features[idx])
 
         ret = {}
-        ret['path'] = self.waymo_data[idx]
+        loadpth = self.waymo_data[idx]
         
         for data_type in self.data_types:
             if data_type in raw:
@@ -53,4 +53,4 @@ class Datalake(Dataset):
                 ret[data_type] = features[data_type]
             else:
                 raise Exception('Datalake: requested datatype {} not present'.format(data_type))
-        return ret, idx
+        return ret, idx, loadpth
