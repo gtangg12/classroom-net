@@ -44,6 +44,8 @@ class Datalake(Dataset):
             features = np.load(self.teacher_features[idx])
 
         ret = {}
+        ret['path'] = self.waymo_data[idx]
+        
         for data_type in self.data_types:
             if data_type in raw:
                 ret[data_type] = raw[data_type]
