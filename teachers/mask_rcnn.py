@@ -3,6 +3,7 @@ import torchvision
 
 MODEL = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
 MODEL.eval()
+MODEL.cuda()
 
 
 def images_to_masks(images):
