@@ -17,9 +17,9 @@ def images_to_masks(images):
         image_seg = torch.zeros((5, *image.shape))
 
         n_boxes = len(result['boxes'])
-        labels_numpy = result['labels'].detach().numpy()
+        labels_numpy = result['labels'].cpu().detach().numpy()
 
-        masks_numpy = result['masks'].detach().numpy() > 0.1
+        masks_numpy = result['masks'].cpu().detach().numpy() > 0.1
         for i in range(n_boxes-1, -1, -1):
             if labels_numpy[i] < 5:
                 image_seg[labels_numpy[i]][masks_numpy[i][0]] += masks_numpy
