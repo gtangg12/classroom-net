@@ -7,11 +7,11 @@ import tensorflow as tf
 import cv2
 
 from waymo_open_dataset.utils import frame_utils
-from waymo_open_dataset import dataset_pb2 as open_dataset
-from waymo_open_dataset import label_pb2 as open_label
+from waymo_open_dataset.formats import dataset_pb2 as open_dataset
+from waymo_open_dataset.formats import label_pb2 as open_label
 
 
-WAYMO_DATA_PATH = 'waymo_open_dataset/frames/'
+WAYMO_DATA_PATH = 'waymo_open_dataset/'
 DATALAKE_PATH  = 'data/'
 
 
@@ -136,7 +136,8 @@ class WaymoFrame:
             image=self.image,
             bounding_boxes=self.bounding_boxes,
             object_classes=self.object_classes,
-            object_depths=self.bounding_box_depth_average
+            object_depths=self.bounding_box_depth_average,
+            image_point_cloud_map_unscaled=self.image_point_cloud_mapping
         )
 
 
@@ -175,10 +176,13 @@ def batch_write(frames, path):
 
 import multiprocessing
 
-def process_batch(path):
-    print('Processing batch')
+def process_batch(args):
+    batch_index, path = args
+    print('Reading batch {}'.format(batch_index))
     frames = batch_read(path)
+    print('Processing batch {}'.format(batch_index))
     batch_process(frames)
+    print('Writing batch {}'.format(batch_index))
     batch_write(frames, path)
 
 
@@ -186,10 +190,11 @@ def process_waymo():
     """ """
     start_time = time.time()
 
-    batches = glob.glob(WAYMO_DATA_PATH + '*/*.tfrecord')
-
-    p = multiprocessing.Pool(processes = 4)
-    p.map(process_batch, batches)
+    batches = glob.glob(WAYMO_DATA_PATH + 'frames/*/*.tfrecord')
+    #print(batches)
+    #return
+    p = multiprocessing.Pool(processes=32)
+    p.map(process_batch, enumerate(batches))
     p.close()
     p.join()
 
