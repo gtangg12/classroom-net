@@ -51,4 +51,4 @@ class Datalake(Dataset):
                 ret[data_type] = features[data_type]
             else:
                 raise Exception('Datalake: requested datatype {} not present'.format(data_type))
-        return ret
+        return ret, idx
