@@ -559,6 +559,8 @@ class RoIHeads(nn.Module):
 
                 clamped_matched_idxs_in_image = matched_idxs_in_image.clamp(min=0)
 
+                #print(clamped_matched_idxs_in_image)
+                #print(gt_labels_in_image.shape)
                 labels_in_image = gt_labels_in_image[clamped_matched_idxs_in_image]
                 labels_in_image = labels_in_image.to(dtype=torch.int64)
 

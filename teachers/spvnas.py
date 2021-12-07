@@ -18,6 +18,12 @@ from external.spvnas.model_zoo import minkunet, spvcnn, spvnas_specialized
 import torch
 import numpy as np
 
+h_orig, w_orig = 1280, 1920
+
+h_new, w_new = 256, 384
+
+scale = 5
+
 MODEL = spvnas_specialized('SemanticKITTI_val_SPVNAS@65GMACs')
 def unproject_features(features_3d, point_cloud):
     """
@@ -25,12 +31,29 @@ def unproject_features(features_3d, point_cloud):
     point cloud, shape (N_i, 5)
     result: (H, W, D)
     """
-    h, w = int(np.max(point_cloud[:, :, 3])) + 1, int(np.max(point_cloud[:, :, 4])) + 1
+    #print(point_cloud)
+    h, w = int(torch.max(point_cloud[:, 3]).item()) + 1, int(torch.max(point_cloud[:, 4]).item()) + 1
     n, d = features_3d.shape
-    features = np.zeros((h, w, d))
+    features = torch.zeros((h_new, w_new, d), device='cuda')
+
+    _, idx_sort = torch.sort(point_cloud[:, 1], descending=True)
+    pc_ = point_cloud[idx_sort]
+    features_ = features_3d[idx_sort]
+    features[(pc_[:, 3]/5).type(torch.cuda.LongTensor), (pc_[:, 4]/5).type(torch.cuda.LongTensor)] = features_
+
+    """
+    for x in range(h):
+        for y in range(w):
+            point_cloud_with_idx = torch.cat((point_cloud, torch.arange(point_cloud.shape[0])[:, None]), dim=1)
+            idxs_relevant = (5*x <= point_cloud[:, 3]) & (point_cloud[:, 3] < 5*x+5) & (5*y <= point_cloud[:, 4]) & (point_cloud[:, 4] < 5*y+5) 
+            points_relevant = point_cloud_with_idx[idxs_relevant]
+            if points_relevant.shape[0]:
+                point_to_use = points_relevant[torch.argmin(points_relevant[:, 1]), :]
+                features[x, y] = features_3d[point_to_use[5]].cpu().detach()
+    """
 
     #batch_idx = np.tile(np.arange(b), (1, n))
-    features[point_cloud[:, :, 3].astype(int), point_cloud[:, :, 4].astype(int)] = features_3d.cpu().detach()
+    #features[point_cloud[:, 3].type(torch.LongTensor), point_cloud[:, 4].type(torch.LongTensor)] = features_3d.cpu().detach()
     return features
 
 def preprocess_block(block):
@@ -46,7 +69,7 @@ def preprocess_block(block):
     _, inds, inverse_map = sparse_quantize(pc_,
                                             return_index=True,
                                             return_inverse=True)
-
+    
     pc = pc_[inds]
     feat = feat_[inds]
     #labels = labels_[inds]
@@ -115,6 +138,7 @@ def get_projected_features_from_point_clouds(pcs):
 
     # convert to sparse tensor
     preprocessed_inputs = []
+
     for i in range(len(pcs)):
         preprocessed_inputs.append(preprocess_block(
             np.hstack(( pcs[i][:, :3], np.full((pcs[i].shape[0], 1), 0, dtype=np.float32) )) 
@@ -126,17 +150,18 @@ def get_projected_features_from_point_clouds(pcs):
     # extract features
     features = extract_features(MODEL, inputs['lidar'].cuda()).F
 
+    #print(features.shape, inputs['lidar'].F.shape, inputs['inverse_map'].C.shape)
     # unproject features
     unprojected_features = []
     for idx in range(inputs['inverse_map'].C[:, -1].max() + 1):
         # get the inverse indices
         inv_idx = inputs['inverse_map'].F[inputs['inverse_map'].C[:, -1] == idx]
         # get the features
-        feat = features[inputs['inverse_map'].C[:, -1] == idx][inv_idx]
+        feat = features[inputs['lidar'].C[:, -1] == idx][inv_idx]
         # unproject
-        unprojected_features.append(unproject_features(feat, pcs[inv_idx]))
+        unprojected_features.append(unproject_features(feat, pcs[idx][inv_idx]))
     
-    return torch.stack(unprojected_features, dim=0)
+    return torch.permute(torch.stack(unprojected_features, dim=0), (0, 3, 1, 2))
 
     
     

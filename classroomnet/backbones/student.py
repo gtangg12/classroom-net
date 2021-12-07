@@ -3,6 +3,7 @@ import torchvision
 import torch.nn as nn
 import torch.nn.functional as F
 from classroomnet.backbones.models.resnet import resnet18
+import time
 
 class SimulatedModule(nn.Module):
     def __init__(self, feature_dim, statistics, distill_dim):
@@ -72,14 +73,19 @@ class StudentModule(nn.Module):
 
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         x = x.to(device)
+        st = time.time()
 
-        print(x.shape, 'input shape')
+        #print(x.shape, 'input shape')
         x = self.resnet(x)
-        print(x.shape)
+        print(time.time() - st, 'resnet time')
+        st = time.time()
+
+        #print(x.shape)
         # print("FINISHED BACKBONE RESNET")
         z_list, z_to_train_list = zip(*[sim_module(x) for sim_module in self.sim_module_list])
         x = self.cls1(x)
         z_dict = {'0': x}
         z_dict.update({str(i+1): z_list[i] for i in range(self.num_teachers)})
-
+      
+        print(time.time() - st, 'student for loops time')
         return z_dict, z_to_train_list

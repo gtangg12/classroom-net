@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-RAW_DATA_TYPES = ['image', 'bounding_boxes', 'object_classes', 'object_depths', 'image_point_cloud_map']
+RAW_DATA_TYPES = ['image', 'bounding_boxes', 'object_classes', 'object_depths', 'image_point_cloud_map_unscaled']
 TEACHER_DATA_TYPES = ['object_class_mask']
 
 class Datalake(Dataset):
@@ -35,7 +35,7 @@ class Datalake(Dataset):
         for data_type in self.data_types:
             if data_type in raw:
                 ret[data_type] = raw[data_type]
-            elif data_type in self.features:
+            elif data_type in features:
                 ret[data_type] = features[data_type]
             else:
                 raise Exception('Datalake: requested datatype {} not present'.format(data_type))

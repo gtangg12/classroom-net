@@ -1,13 +1,14 @@
 from torch.utils.data.dataloader import DataLoader
 from classroomnet.classroomnet import create_classroom_net
 from datalake.datalake import Datalake
-from teachers.spvnas import get_unprojected_features_from_point_clouds
+from teachers.spvnas import get_projected_features_from_point_clouds
 import cv2 
 import time
 import numpy as np
 import torch    
 import torch.nn.functional as F
 import torch.optim as optim
+import time
 
 # torch.cuda.set_enabled_lms(True)
 
@@ -29,22 +30,23 @@ def imshow(name, image, enc='RGB'):
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
 
-model = create_classroom_net(2, 128, [(0, 1, 0, 1), (0, 1, 0, 1)], [78, 5], [96, 78, 5], 128, 10)
+model = create_classroom_net(2, 128, [(0, 1, 0, 1), (0, 1, 0, 1)], [76, 5], [96, 96, 96], 128, 100)
 model.to(device)
 
 optimizer = optim.SGD(model.parameters(), lr=0.005, momentum=0.9)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.7, patient=8)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.7, patience=8)
 
-data = Datalake(10, ['image', 'bounding_boxes', 'object_classes', 'object_depths', 'object_class_mask', 'image_point_cloud_map'], 'datalake/data_sample')
+data = Datalake(10, ['image', 'bounding_boxes', 'object_classes', 'object_depths', 'object_class_mask', 'image_point_cloud_map_unscaled'], 'datalake/data')
 # print(data[0])
 
-dataloader = DataLoader(data, batch_size=2)
+dataloader = DataLoader(data, batch_size=1)
 
 num_epochs = 150
 
 for epochs in range(num_epochs):
     for data_instance, idxs, pths in dataloader:
-
+        
+        st = time.time()
         optimizer.zero_grad()
 
         image = data_instance['image']
@@ -52,44 +54,60 @@ for epochs in range(num_epochs):
         object_classes = data_instance['object_classes']
         object_depths = data_instance['object_depths']
         mask = data_instance['object_class_mask']
-        pc = data_instance['image_point_cloud_map']
+        pc = data_instance['image_point_cloud_map_unscaled']
 
         # draw_bounding_boxes(image, bounding_boxes)
         # imshow('Image', image)
         # print(object_depths)
         # print(object_classes)
 
-        print(bounding_boxes)
+        #print(bounding_boxes)
 
-        image_reshape = torch.permute(torch.from_numpy(image), (0, 3, 1, 2)) / 256
+        image_reshape = torch.permute(image, (0, 3, 1, 2)) / 256
         image_reshape.to(device)
 
-        print(image_reshape)
+        #print(image_reshape)
 
         targets = []
 
         for bbox_sample in bounding_boxes:
-            bbox = torch.from_numpy(bbox_sample)
+            bbox = bbox_sample
             x1 = bbox[:, 0:1]
             x2 = bbox[:, 1:2]
             y1 = bbox[:, 2:3]
             y2 = bbox[:, 3:4]
             bbox = torch.cat([x1, y1, x2, y2], dim=1).to(device)
 
-            labels = torch.from_numpy(object_classes).to(device)
-            depths = torch.from_numpy(object_depths).to(device)
+            labels = object_classes[0].to(device)
+            depths = object_depths[0].to(device)
 
-            print(bbox, labels, depths)
+            #print(bbox, labels, depths)
 
+            keep_idxs = (x2[:, 0]-x1[:, 0]>4) & (y2[:, 0]-y1[:, 0]>4)
+            bbox, labels, depths = bbox[keep_idxs], labels[keep_idxs], depths[keep_idxs]
+            
+            # if (x2 - x1 > 4) and (y2 - y1 > 4):
             targets.append({'boxes': bbox, 'labels': labels, 'depths': depths})
 
         # model.eval()
 
-        l, z = model(image_reshape, targets)
+        print(time.time() - st, 'time preprocessing')
+        st = time.time()
 
-        feats_3d = get_unprojected_features_from_point_clouds(pc)
+        #print(image_reshape.shape, targets[0]['boxes'].shape, targets[0]['labels'].shape, targets[0]['depths'].shape)
+        l, z = model([image_reshape[0]], targets)
+        #print('pc shape', pc.shape)
+        print(time.time() - st, 'time student')
+        st = time.time()
+
+        pc = [torch.flip(pc[0], (1,))]
+        feats_3d = get_projected_features_from_point_clouds(pc).detach()
+        
+        print(time.time() - st, 'time 3d')
+        st = time.time() 
+
         distill_loss_3d = F.mse_loss(z[0], feats_3d)
-        distill_loss_mask = F.mse_loss(z[1], mask)
+        distill_loss_mask = F.mse_loss(z[1], mask.cuda().detach())
         print('distill_loss_3d', distill_loss_3d)
         print('distill_loss_mask', distill_loss_mask)
         total_loss = distill_loss_3d + distill_loss_mask
@@ -99,4 +117,6 @@ for epochs in range(num_epochs):
         
         total_loss.backward()
         optimizer.step()
-        scheduler.step()
+        scheduler.step(total_loss)
+ 
+        print(time.time() - st, 'time optimize')

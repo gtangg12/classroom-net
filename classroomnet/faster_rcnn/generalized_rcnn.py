@@ -8,7 +8,7 @@ from typing import Tuple, List, Dict, Optional, Union
 
 import torch
 from torch import nn, Tensor
-
+import time
 # from ...utils import _log_api_usage_once
 
 
@@ -57,6 +57,7 @@ class GeneralizedRCNN(nn.Module):
                 like `scores`, `labels` and `mask` (for Mask R-CNN models).
 
         """
+        st = time.time()
         if self.training and targets is None:
             raise ValueError("In training mode, targets should be passed")
         if self.training:
@@ -75,17 +76,20 @@ class GeneralizedRCNN(nn.Module):
             assert len(val) == 2
             original_image_sizes.append((val[0], val[1]))
 
-        images_orig = torch.clone(images[0])
-        print(images[0].shape, "pre-transform")
+        #images_orig = torch.clone(images[0])
+        #print(images[0].shape, "pre-transform")
+        print(time.time() - st, 'student preprocess cehcking time')
+        st = time.time()
         images, targets = self.transform(images, targets)
-        print(images.tensors[0].shape, "post-transform")
-
-        print((images.tensors == images_orig).all())
+        #print(images.tensors[0].shape, "post-transform")
+        print(time.time() - st, 'student transform time')
+        st = time.time()#print((images.tensors == images_orig).all())
 
         # print("FINISHED TRANSFORM")
 
         # Check for degenerate boxes
         # TODO: Move this to a function
+        
         if targets is not None:
             for target_idx, target in enumerate(targets):
                 boxes = target["boxes"]
@@ -98,10 +102,10 @@ class GeneralizedRCNN(nn.Module):
                         "All bounding boxes should have positive height and width."
                         f" Found invalid box {degen_bb} for target at index {target_idx}."
                     )
-
+        
         features, z_to_train_list = self.backbone(images.tensors)
-
-        # print("FINISHED BACKBONE")
+        print(time.time() - st, 'backbone time')
+        st = time.time()# print("FINISHED BACKBONE")
 
         # print(len(features))
 
@@ -110,7 +114,7 @@ class GeneralizedRCNN(nn.Module):
         proposals, proposal_losses = self.rpn(images, features, targets)
         detections, detector_losses = self.roi_heads(features, proposals, images.image_sizes, targets)
         detections = self.transform.postprocess(detections, images.image_sizes, original_image_sizes)  # type: ignore[operator]
-
+        print(time.time() - st, 'student heads time')
         losses = {}
         losses.update(detector_losses)
         losses.update(proposal_losses)
