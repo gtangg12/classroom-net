@@ -2,6 +2,8 @@
 frames/
 data/
 
+*.pt
+.pt
 # MacOS
 .DS_Store
 

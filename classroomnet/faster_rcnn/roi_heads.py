@@ -34,7 +34,8 @@ def fastrcnn_loss(class_logits, box_regression, depth_preds, labels, regression_
     depth_class_preds = torch.cat([depth_preds[i:i+1, labels[i]] for i in range(len(depth_preds))], dim=0)
 
     #height, width = regression_targets[2:] 
-    depth_normalized = torch.log(torch.clamp(depths, 1e-5, 1e5))# + (torch.log(torch.clamp(height*width, 1e-5, 1e5)))/2 
+    #depth_normalized = torch.log(torch.clamp(depths, 1e-5, 1e5))# + (torch.log(torch.clamp(height*width, 1e-5, 1e5)))/2 
+    depth_normalized = torch.clamp((depths/70)**(1/2.2), 0, 1)
 
     depth_loss = F.smooth_l1_loss(depth_class_preds, depth_normalized)
 

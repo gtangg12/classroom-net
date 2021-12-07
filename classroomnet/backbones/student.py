@@ -73,12 +73,12 @@ class StudentModule(nn.Module):
 
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         x = x.to(device)
-        st = time.time()
+        #st = time.time()
 
         #print(x.shape, 'input shape')
         x = self.resnet(x)
-        print(time.time() - st, 'resnet time')
-        st = time.time()
+        #print(time.time() - st, 'resnet time')
+        #st = time.time()
 
         #print(x.shape)
         # print("FINISHED BACKBONE RESNET")
@@ -87,5 +87,5 @@ class StudentModule(nn.Module):
         z_dict = {'0': x}
         z_dict.update({str(i+1): z_list[i] for i in range(self.num_teachers)})
       
-        print(time.time() - st, 'student for loops time')
+        #print(time.time() - st, 'student for loops time')
         return z_dict, z_to_train_list

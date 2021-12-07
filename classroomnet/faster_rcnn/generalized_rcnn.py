@@ -78,12 +78,12 @@ class GeneralizedRCNN(nn.Module):
 
         #images_orig = torch.clone(images[0])
         #print(images[0].shape, "pre-transform")
-        print(time.time() - st, 'student preprocess cehcking time')
-        st = time.time()
+        #print(time.time() - st, 'student preprocess cehcking time')
+        #st = time.time()
         images, targets = self.transform(images, targets)
         #print(images.tensors[0].shape, "post-transform")
-        print(time.time() - st, 'student transform time')
-        st = time.time()#print((images.tensors == images_orig).all())
+        #print(time.time() - st, 'student transform time')
+        #st = time.time()#print((images.tensors == images_orig).all())
 
         # print("FINISHED TRANSFORM")
 
@@ -104,8 +104,8 @@ class GeneralizedRCNN(nn.Module):
                     )
         
         features, z_to_train_list = self.backbone(images.tensors)
-        print(time.time() - st, 'backbone time')
-        st = time.time()# print("FINISHED BACKBONE")
+        #print(time.time() - st, 'backbone time')
+        #st = time.time()# print("FINISHED BACKBONE")
 
         # print(len(features))
 
@@ -114,7 +114,7 @@ class GeneralizedRCNN(nn.Module):
         proposals, proposal_losses = self.rpn(images, features, targets)
         detections, detector_losses = self.roi_heads(features, proposals, images.image_sizes, targets)
         detections = self.transform.postprocess(detections, images.image_sizes, original_image_sizes)  # type: ignore[operator]
-        print(time.time() - st, 'student heads time')
+        #print(time.time() - st, 'student heads time')
         losses = {}
         losses.update(detector_losses)
         losses.update(proposal_losses)
