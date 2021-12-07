@@ -75,7 +75,12 @@ class GeneralizedRCNN(nn.Module):
             assert len(val) == 2
             original_image_sizes.append((val[0], val[1]))
 
+        images_orig = torch.clone(images[0])
+        print(images[0].shape, "pre-transform")
         images, targets = self.transform(images, targets)
+        print(images.tensors[0].shape, "post-transform")
+
+        print((images.tensors == images_orig).all())
 
         # print("FINISHED TRANSFORM")
 

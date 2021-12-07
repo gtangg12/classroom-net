@@ -108,7 +108,7 @@ def extract_features(model_spvnas, x):
 
     return z3
 
-def get_unprojected_features_from_point_clouds(pcs):
+def get_projected_features_from_point_clouds(pcs):
     """Abstracts away other parts of code. Get the unprojected features from the raw point clouds"""
 
     # convert to sparse tensor

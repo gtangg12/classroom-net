@@ -32,7 +32,11 @@ def fastrcnn_loss(class_logits, box_regression, depth_preds, labels, regression_
 
     classification_loss = F.cross_entropy(class_logits, labels)
     depth_class_preds = torch.cat([depth_preds[i:i+1, labels[i]] for i in range(len(depth_preds))], dim=0)
-    depth_loss = F.mse_loss(depth_class_preds, depths)
+
+    #height, width = regression_targets[2:] 
+    depth_normalized = torch.log(torch.clamp(depths, 1e-5, 1e5))# + (torch.log(torch.clamp(height*width, 1e-5, 1e5)))/2 
+
+    depth_loss = F.smooth_l1_loss(depth_class_preds, depth_normalized)
 
     # get indices that correspond to the regression targets for
     # the corresponding ground truth labels, to be used with

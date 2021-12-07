@@ -1,9 +1,11 @@
 from classroomnet.classroomnet import create_classroom_net
 from datalake.datalake import Datalake
+from teachers.spvnas import get_unprojected_features_from_point_clouds
 import cv2 
 import time
 import numpy as np
 import torch    
+import torch.nn.functional as F
 
 # torch.cuda.set_enabled_lms(True)
 
@@ -22,14 +24,18 @@ def imshow(name, image, enc='RGB'):
     cv2.waitKey(0)
 
 
-data = Datalake(1, ['image', 'bounding_boxes', 'object_classes', 'object_depths'], 'datalake/data_sample')
+data = Datalake(10, ['image', 'bounding_boxes', 'object_classes', 'object_depths', 'object_class_mask', 'image_point_cloud_map'], 'datalake/data_sample')
 # print(data[0])
 
-data_instance = data[0][0]
+
+
+data_instance = data[0]
 image = data_instance['image']
 bounding_boxes = data_instance['bounding_boxes']
 object_classes = data_instance['object_classes']
 object_depths = data_instance['object_depths']
+mask = data_instance['object_class_mask']
+pc = data_instance['image_point_cloud_map']
 
 # draw_bounding_boxes(image, bounding_boxes)
 # imshow('Image', image)
@@ -41,7 +47,7 @@ print(device)
 
 print(bounding_boxes)
 
-model = create_classroom_net(2, 128, [(0, 1, 0, 1), (0, 1, 0, 1)], [96, 96, 96], 128, 10)
+model = create_classroom_net(2, 128, [(0, 1, 0, 1), (0, 1, 0, 1)], [96, 48, 48], 128, 10)
 model.to(device)
 
 image_reshape = torch.reshape(torch.from_numpy(image), (1, 3, 256, 384)) / 256
@@ -66,6 +72,12 @@ targets = {'boxes': bbox, 'labels': labels, 'depths': depths}
 # model.eval()
 
 l, z = model(image_reshape, [targets])
+
+
+
+# mask losses
+def mask_loss(z, mask):
+    return F.mse_loss(z[0][:5], mask)
 
 print(l, z[0].shape)
 

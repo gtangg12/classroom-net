@@ -13,28 +13,28 @@ class SimulatedModule(nn.Module):
             nn.Conv2d(feature_dim, 128, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
-            nn.Conv2d(128, 48, kernel_size=1)
+            nn.Conv2d(128, 96, kernel_size=1)
         )
 
         self.l2 = nn.Sequential(
-                nn.Conv2d(48, 48, kernel_size=3, padding=1, bias=False),
-                nn.BatchNorm2d(48),
+                nn.Conv2d(96, 96, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(96),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(48, 48, kernel_size=1),
+                nn.Conv2d(96, 96, kernel_size=1),
                 nn.ReLU(inplace=True)
         )
 
         self.l3 = nn.Sequential(
-                nn.Conv2d(48, 48, kernel_size=3, padding=1, bias=False),
-                nn.BatchNorm2d(48),
+                nn.Conv2d(96, 96, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(96),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(48, 48, kernel_size=1),
+                nn.Conv2d(96, 96, kernel_size=1),
                 nn.ReLU(inplace=True)
         )
 
-        self.bn1 = nn.BatchNorm2d(48)
+        self.bn1 = nn.BatchNorm2d(96)
 
-        self.bn2 = nn.BatchNorm2d(48)
+        self.bn2 = nn.BatchNorm2d(96)
     
     def forward(self, x):
         # DN1
@@ -62,8 +62,8 @@ class StudentModule(nn.Module):
             nn.Conv2d(feature_dim, 128, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
-            nn.Conv2d(128, 48*2, kernel_size=1),
-            nn.BatchNorm2d(48*2),
+            nn.Conv2d(128, 96, kernel_size=1),
+            nn.BatchNorm2d(96),
             nn.ReLU(inplace=True)
         )
     
@@ -73,7 +73,9 @@ class StudentModule(nn.Module):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         x = x.to(device)
 
+        print(x.shape, 'input shape')
         x = self.resnet(x)
+        print(x.shape)
         # print("FINISHED BACKBONE RESNET")
         z_list, z_to_train_list = zip(*[sim_module(x) for sim_module in self.sim_module_list])
         x = self.cls1(x)
