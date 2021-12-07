@@ -1,4 +1,4 @@
-from torch.utils.data.dataloader import random_split, DataLoader
+from torch.utils.data import random_split, DataLoader
 from classroomnet.classroomnet import create_classroom_net
 from datalake.datalake import Datalake
 from teachers.spvnas import get_projected_features_from_point_clouds
@@ -42,8 +42,8 @@ data = Datalake(50000, ['image', 'bounding_boxes', 'object_classes', 'object_dep
 
 trainset, valset = random_split(data, (48000, 2000))
 
-trainloader = DataLoader(trainset, batch_size=8, collate_fn=Datalake.collate_fn, shuffle=True)
-testloader = DataLoader(valset, batch_size=8, collate_fn=Datalake.collate_fn, shuffle=False)
+trainloader = DataLoader(trainset, batch_size=6, collate_fn=Datalake.collate_fn, shuffle=True)
+testloader = DataLoader(valset, batch_size=6, collate_fn=Datalake.collate_fn, shuffle=False)
 
 num_epochs = 2
 
@@ -146,7 +146,7 @@ for epochs in range(num_epochs):
             print(time.time() - st, 'time optimize')
 
             train_losses.append((distill_loss_3d.item(), distill_loss_mask.item(), total_loss.item()))
-
+            print(train_losses)
 
             if num_batches%499 == 1:
                 torch.save(model.state_dict(), f'last_model{num_batches}.pt')
@@ -164,7 +164,6 @@ for epochs in range(num_epochs):
                     }
 
                     
-                    optimizer.zero_grad()
 
                     image = data_instance['image']
                     bounding_boxes = data_instance['bounding_boxes']
