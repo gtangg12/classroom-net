@@ -8,6 +8,8 @@ from torchsparse.utils.quantize import sparse_quantize
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
+sys.path.append(str(Path(__file__).resolve().parents[0]))
+sys.path.append(str(Path(__file__).resolve().parents[0] / 'external/spvnas'))
 
 from external.spvnas.core.models.utils import point_to_voxel, voxel_to_point
 from external.spvnas.model_zoo import minkunet, spvcnn, spvnas_specialized
@@ -125,7 +127,7 @@ def get_projected_features_from_point_clouds(pcs):
     features = extract_features(MODEL, inputs['lidar'].cuda()).F
 
     # unproject features
-    unprojected_features = []]
+    unprojected_features = []
     for idx in range(inputs['inverse_map'].C[:, -1].max() + 1):
         # get the inverse indices
         inv_idx = inputs['inverse_map'].F[inputs['inverse_map'].C[:, -1] == idx]

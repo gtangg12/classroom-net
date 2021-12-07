@@ -18,6 +18,7 @@ class StudentBackbone(nn.Module):
         num_teachers,
         feature_dim,
         statistics_list,
+        distill_dim_list,
         in_channels_list: List[int],
         out_channels: int,
         extra_blocks: Optional[ExtraFPNBlock] = None,
@@ -27,7 +28,7 @@ class StudentBackbone(nn.Module):
         if extra_blocks is None:
             extra_blocks = LastLevelMaxPool()
 
-        self.body = StudentModule(num_teachers=num_teachers, feature_dim=feature_dim, statistics_list=statistics_list)
+        self.body = StudentModule(num_teachers=num_teachers, feature_dim=feature_dim, statistics_list=statistics_list, distill_dim_list=distill_dim_list)
         self.fpn = FeaturePyramidNetwork(
             in_channels_list=in_channels_list,
             out_channels=out_channels,

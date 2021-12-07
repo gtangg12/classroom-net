@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from classroomnet.backbones.models.resnet import resnet18
 
 class SimulatedModule(nn.Module):
-    def __init__(self, feature_dim, statistics):
+    def __init__(self, feature_dim, statistics, distill_dim):
         super().__init__()
         self.mean3d, self.std3d, self.mean2d, self.std2d = statistics
 
@@ -20,12 +20,12 @@ class SimulatedModule(nn.Module):
                 nn.Conv2d(96, 96, kernel_size=3, padding=1, bias=False),
                 nn.BatchNorm2d(96),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(96, 96, kernel_size=1),
+                nn.Conv2d(96, distill_dim, kernel_size=1),
                 nn.ReLU(inplace=True)
         )
 
         self.l3 = nn.Sequential(
-                nn.Conv2d(96, 96, kernel_size=3, padding=1, bias=False),
+                nn.Conv2d(distill_dim, 96, kernel_size=3, padding=1, bias=False),
                 nn.BatchNorm2d(96),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(96, 96, kernel_size=1),
@@ -34,7 +34,7 @@ class SimulatedModule(nn.Module):
 
         self.bn1 = nn.BatchNorm2d(96)
 
-        self.bn2 = nn.BatchNorm2d(96)
+        self.bn2 = nn.BatchNorm2d(distill_dim)
     
     def forward(self, x):
         # DN1
@@ -44,19 +44,19 @@ class SimulatedModule(nn.Module):
 
         # DN2
         x = self.bn2(x_to_train)
-        x = self.bn1(x) * self.std2d + self.mean2d
+        x = x * self.std2d + self.mean2d
         x = self.l3(x)
 
         return x, x_to_train
 
 
 class StudentModule(nn.Module):
-    def __init__(self, num_teachers, feature_dim, statistics_list): # feature_dim should be 128 with resnet18
+    def __init__(self, num_teachers, feature_dim, statistics_list, distill_dim_list): # feature_dim should be 128 with resnet18
         super().__init__()
 
         self.num_teachers = num_teachers
         self.resnet = resnet18()
-        self.sim_module_list = nn.ModuleList([SimulatedModule(feature_dim, statistics_list[i]) for i in range(self.num_teachers)])
+        self.sim_module_list = nn.ModuleList([SimulatedModule(feature_dim, statistics_list[i], distill_dim_list[i]) for i in range(self.num_teachers)])
 
         self.cls1 = nn.Sequential(
             nn.Conv2d(feature_dim, 128, kernel_size=3, padding=1, bias=False),
