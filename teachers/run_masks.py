@@ -10,7 +10,7 @@ from datalake.datalake import Datalake
 import torch
 import os
 
-data = Datalake(100, ['image'], Path(__file__).parent.parent/'datalake/data_sample')
+data = Datalake(100, ['image'], Path(__file__).parent.parent/'datalake/data')
 dataloader = DataLoader(data, batch_size=16)
 
 for X, y, pths in dataloader:
