@@ -19,16 +19,16 @@ import numpy as np
 MODEL = spvnas_specialized('SemanticKITTI_val_SPVNAS@65GMACs')
 def unproject_features(features_3d, point_cloud):
     """
-    Given 3d features, shape (\sum_i N_i, D), downproject to 2D features, using 
-    point cloud, B arrays of shape (N_i, 5)
-    result: (B, H, W, D)
+    Given 3d features, shape (N_i, D), downproject to 2D features, using 
+    point cloud, shape (N_i, 5)
+    result: (H, W, D)
     """
     h, w = int(np.max(point_cloud[:, :, 3])) + 1, int(np.max(point_cloud[:, :, 4])) + 1
-    b, n, d = features_3d.shape
-    features = np.zeros((b, h, w, d))
+    n, d = features_3d.shape
+    features = np.zeros((h, w, d))
 
-    batch_idx = np.tile(np.arange(b), (1, n))
-    features[batch_idx, point_cloud[:, :, 3].astype(int), point_cloud[:, :, 4].astype(int)] = features_3d.cpu().detach()
+    #batch_idx = np.tile(np.arange(b), (1, n))
+    features[point_cloud[:, :, 3].astype(int), point_cloud[:, :, 4].astype(int)] = features_3d.cpu().detach()
     return features
 
 def preprocess_block(block):
@@ -122,7 +122,19 @@ def get_projected_features_from_point_clouds(pcs):
     inputs = sparse_collate_fn(preprocessed_inputs)
 
     # extract features
-    features = extract_features(MODEL, inputs['lidar'].cuda()).F[inputs['inverse_map'].F]
+    features = extract_features(MODEL, inputs['lidar'].cuda()).F
 
     # unproject features
+    unprojected_features = []]
+    for idx in range(inputs['inverse_map'].C[:, -1].max() + 1):
+        # get the inverse indices
+        inv_idx = inputs['inverse_map'].F[inputs['inverse_map'].C[:, -1] == idx]
+        # get the features
+        feat = features[inputs['inverse_map'].C[:, -1] == idx][inv_idx]
+        # unproject
+        unprojected_features.append(unproject_features(feat, pcs[inv_idx]))
+    
+    return torch.stack(unprojected_features, dim=0)
+
+    
     
