@@ -11,6 +11,7 @@ import torch.optim as optim
 import time
 import pickle
 from tqdm import tqdm
+from advertorch.attacks import L2PGDAttack
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -45,13 +46,6 @@ for data_batch in loader:
     mask = data_instance['object_class_mask']
     pc = data_instance['image_point_cloud_map_unscaled']
 
-    # draw_bounding_boxes(image, bounding_boxes)
-    # imshow('Image', image)
-    # print(object_depths)
-    # print(object_classes)
-
-    #print(bounding_boxes)
-
     image_reshape = torch.permute(image, (0, 3, 1, 2)) / 256
     image_reshape.to(device)
 
@@ -77,7 +71,18 @@ for data_batch in loader:
 
     l, z = model(image_reshape, targets)
 
-    l['distill 3d'] = 
+    pc = [torch.flip(torch.tensor(pc_), (1,)) for pc_ in pc]
 
+    feats_3d = get_projected_features_from_point_clouds(pc).detach()
 
+    distill_loss_3d = F.mse_loss(z[0], feats_3d)
+    distill_loss_mask = F.mse_loss(z[1], mask.cuda().detach())
+
+    l['distill 3d'] = distill_loss_3d
+    l['distill mask'] = distill_loss_mask
+
+    for k, v in l.items():
+        attack = L2PGDAttack(model, epsilon=8.0, eps_iter=0.1, nb_iter=50,    
+                rand_init=False, targeted=True, clip_min = -3.0, clip_max = 3.0)
+        adv_image = attack.perturb(image_reshape, targets)
 
