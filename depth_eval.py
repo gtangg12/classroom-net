@@ -33,76 +33,82 @@ data = Datalake(50000, ['image', 'bounding_boxes', 'object_classes', 'object_dep
 loader = DataLoader(data, batch_size=6, collate_fn=Datalake.collate_fn, shuffle=True)
 
 
-total_loss_nonablated = 0
-total_loss_ablated = 0
-total_loss_nonablated_count = 0
-total_loss_ablated_count = 0
 
-for data_batch in loader:
+for specific_model, model_name in [(model, 'usual'), (ablated_model, 'ablated')]:
+    total_losses = {}
+    total_counts = 0
+    for data_batch in loader:
 
-    data_dict = [x for x, _, _ in data_batch if len(x['bounding_boxes'].shape) == 2]
-    data_instance = {
-        'image': torch.stack([torch.tensor(x['image']) for x in data_dict], dim=0),
-        'bounding_boxes': [x['bounding_boxes'] for x in data_dict],
-        'object_classes': [x['object_classes'] for x in data_dict],
-        'object_depths': [x['object_depths'] for x in data_dict],
-        'object_class_mask': torch.stack([torch.tensor(x['object_class_mask']) for x in data_dict], dim=0),
-        'image_point_cloud_map_unscaled': [x['image_point_cloud_map_unscaled'] for x in data_dict],
-    }
+        data_dict = [x for x, _, _ in data_batch if len(x['bounding_boxes'].shape) == 2]
+        data_instance = {
+            'image': torch.stack([torch.tensor(x['image']) for x in data_dict], dim=0),
+            'bounding_boxes': [x['bounding_boxes'] for x in data_dict],
+            'object_classes': [x['object_classes'] for x in data_dict],
+            'object_depths': [x['object_depths'] for x in data_dict],
+            'object_class_mask': torch.stack([torch.tensor(x['object_class_mask']) for x in data_dict], dim=0),
+            'image_point_cloud_map_unscaled': [x['image_point_cloud_map_unscaled'] for x in data_dict],
+        }
 
 
-    image = data_instance['image']
-    bounding_boxes = data_instance['bounding_boxes']
-    object_classes = data_instance['object_classes']
-    object_depths = data_instance['object_depths']
-    mask = data_instance['object_class_mask']
-    pc = data_instance['image_point_cloud_map_unscaled']
+        image = data_instance['image']
+        bounding_boxes = data_instance['bounding_boxes']
+        object_classes = data_instance['object_classes']
+        object_depths = data_instance['object_depths']
+        mask = data_instance['object_class_mask']
+        pc = data_instance['image_point_cloud_map_unscaled']
 
-    # draw_bounding_boxes(image, bounding_boxes)
-    # imshow('Image', image)
-    # print(object_depths)
-    # print(object_classes)
+        # draw_bounding_boxes(image, bounding_boxes)
+        # imshow('Image', image)
+        # print(object_depths)
+        # print(object_classes)
 
-    #print(bounding_boxes)
+        #print(bounding_boxes)
 
-    image_reshape = torch.permute(image, (0, 3, 1, 2)) / 256
-    image_reshape.to(device)
+        image_reshape = torch.permute(image, (0, 3, 1, 2)) / 256
+        image_reshape.to(device)
 
-    targets = []
-    for idx, bbox_sample in enumerate(bounding_boxes):
-        bbox = torch.tensor(bbox_sample)
-        x1 = bbox[:, 0:1]
-        x2 = bbox[:, 1:2]
-        y1 = bbox[:, 2:3]
-        y2 = bbox[:, 3:4]
-        bbox = torch.cat([x1, y1, x2, y2], dim=1).to(device)
+        targets = []
+        for idx, bbox_sample in enumerate(bounding_boxes):
+            bbox = torch.tensor(bbox_sample)
+            x1 = bbox[:, 0:1]
+            x2 = bbox[:, 1:2]
+            y1 = bbox[:, 2:3]
+            y2 = bbox[:, 3:4]
+            bbox = torch.cat([x1, y1, x2, y2], dim=1).to(device)
 
-        labels = torch.tensor(object_classes[idx]).to(device)
-        depths = torch.tensor(object_depths[idx]).to(device)
+            labels = torch.tensor(object_classes[idx]).to(device)
+            depths = torch.tensor(object_depths[idx]).to(device)
 
-        #print(bbox, labels, depths)
+            #print(bbox, labels, depths)
 
-        keep_idxs = (x2[:, 0]-x1[:, 0]>4) & (y2[:, 0]-y1[:, 0]>4)
-        bbox, labels, depths = bbox[keep_idxs], labels[keep_idxs], depths[keep_idxs]
+            keep_idxs = (x2[:, 0]-x1[:, 0]>4) & (y2[:, 0]-y1[:, 0]>4)
+            bbox, labels, depths = bbox[keep_idxs], labels[keep_idxs], depths[keep_idxs]
+            
+            # if (x2 - x1 > 4) and (y2 - y1 > 4):
+            targets.append({'boxes': bbox, 'labels': labels, 'depths': depths})
+
         
-        # if (x2 - x1 > 4) and (y2 - y1 > 4):
-        targets.append({'boxes': bbox, 'labels': labels, 'depths': depths})
 
-    l, z = model(image_reshape, targets)
-    l_ablated, z_ablated = ablated_model(image_reshape, targets)
+        l, z = specific_model(image_reshape, targets)
 
-    for k, v in l.items():
-        if k == 'loss_depth':
-            total_loss_nonablated += v.item()
-            total_loss_nonablated_count += 1
+        pc = [torch.flip(torch.tensor(pc_), (1,)) for pc_ in pc]
 
-    for k, v in l_ablated.items():
-        if k == 'loss_depth':
-            total_loss_ablated += v.item()
-            total_loss_ablated_count += 1
+        feats_3d = get_projected_features_from_point_clouds(pc).detach()
 
-print(total_loss_nonablated / total_loss_nonablated_count)
-print(total_loss_ablated / total_loss_ablated_count)
+        distill_loss_3d = F.mse_loss(z[0], feats_3d)
+        distill_loss_mask = F.mse_loss(z[1], mask.cuda().detach())
+
+        l['distill 3d'] = distill_loss_3d
+        l['distill mask'] = distill_loss_mask
+
+        for k, v in l.items():
+            if k not in total_losses:
+                total_losses[k] = 0
+            total_losses[k] += v.item()
+
+        total_counts += 1
     
+    for k, v in total_losses.items():
+        print(k, v/total_counts, model_name)
 
 
