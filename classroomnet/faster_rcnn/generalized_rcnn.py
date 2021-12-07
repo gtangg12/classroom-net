@@ -77,6 +77,8 @@ class GeneralizedRCNN(nn.Module):
 
         images, targets = self.transform(images, targets)
 
+        # print("FINISHED TRANSFORM")
+
         # Check for degenerate boxes
         # TODO: Move this to a function
         if targets is not None:
@@ -93,6 +95,11 @@ class GeneralizedRCNN(nn.Module):
                     )
 
         features, z_to_train_list = self.backbone(images.tensors)
+
+        # print("FINISHED BACKBONE")
+
+        # print(len(features))
+
         if isinstance(features, torch.Tensor):
             features = OrderedDict([("0", features)])
         proposals, proposal_losses = self.rpn(images, features, targets)

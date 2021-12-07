@@ -36,6 +36,6 @@ class StudentBackbone(nn.Module):
         self.out_channels = out_channels
 
     def forward(self, x: Tensor) -> Dict[str, Tensor]:
-        x = self.body(x)
+        x, z_to_train_list = self.body(x)
         x = self.fpn(x)
-        return x
+        return x, z_to_train_list
