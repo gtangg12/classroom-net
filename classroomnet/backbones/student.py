@@ -11,29 +11,29 @@ class SimulatedModule(nn.Module):
         self.mean3d, self.std3d, self.mean2d, self.std2d = statistics
 
         self.l1 = nn.Sequential(
-            nn.Conv2d(feature_dim, 128, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(128),
+            nn.Conv2d(feature_dim, 64, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
-            nn.Conv2d(128, 96, kernel_size=1)
+            nn.Conv2d(64, 48, kernel_size=1)
         )
 
         self.l2 = nn.Sequential(
-                nn.Conv2d(96, 96, kernel_size=3, padding=1, bias=False),
-                nn.BatchNorm2d(96),
+                nn.Conv2d(48, 48, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(48),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(96, distill_dim, kernel_size=1),
+                nn.Conv2d(48, distill_dim, kernel_size=1),
                 nn.ReLU(inplace=True)
         )
 
         self.l3 = nn.Sequential(
-                nn.Conv2d(distill_dim, 96, kernel_size=3, padding=1, bias=False),
-                nn.BatchNorm2d(96),
+                nn.Conv2d(distill_dim, 48, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(48),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(96, 96, kernel_size=1),
+                nn.Conv2d(48, 48, kernel_size=1),
                 nn.ReLU(inplace=True)
         )
 
-        self.bn1 = nn.BatchNorm2d(96)
+        self.bn1 = nn.BatchNorm2d(48)
 
         self.bn2 = nn.BatchNorm2d(distill_dim)
     
@@ -60,11 +60,11 @@ class StudentModule(nn.Module):
         self.sim_module_list = nn.ModuleList([SimulatedModule(feature_dim, statistics_list[i], distill_dim_list[i]) for i in range(self.num_teachers)])
 
         self.cls1 = nn.Sequential(
-            nn.Conv2d(feature_dim, 128, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(128),
+            nn.Conv2d(feature_dim, 64, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
-            nn.Conv2d(128, 96, kernel_size=1),
-            nn.BatchNorm2d(96),
+            nn.Conv2d(64, 48, kernel_size=1),
+            nn.BatchNorm2d(48),
             nn.ReLU(inplace=True)
         )
     

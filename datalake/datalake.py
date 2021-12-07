@@ -23,6 +23,10 @@ class Datalake(Dataset):
     def __len__(self):
         return self.num_data
 
+    @staticmethod
+    def collate_fn(samples):
+        return samples
+
     def __getitem__(self, idx):
         """ """
         raw = np.load(self.waymo_data[idx])
