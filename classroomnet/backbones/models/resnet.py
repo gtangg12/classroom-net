@@ -263,15 +263,22 @@ class ResNet(nn.Module):
 
     def _forward_impl(self, x: Tensor) -> Tensor:
         # See note [TorchScript super()]
+        # print(x.device)
+
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
         # x = self.maxpool(x)
 
+        # print("STARTED RESNET BLOCKS")
+
         x = self.layer1(x)
+
+        # print("FINISHED RESNET BLOCK 1")
+
         x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
+        # x = self.layer3(x)
+        # x = self.layer4(x)
 
         # x = self.avgpool(x)
         # x = torch.flatten(x, 1)

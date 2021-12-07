@@ -10,8 +10,8 @@ from torchvision.ops import roi_align
 import classroomnet.utils._utils as det_utils
 
 
-def fastrcnn_loss(class_logits, box_regression, labels, regression_targets):
-    # type: (Tensor, Tensor, List[Tensor], List[Tensor]) -> Tuple[Tensor, Tensor]
+def fastrcnn_loss(class_logits, box_regression, depth_preds, labels, regression_targets, depths):
+    # type: (Tensor, Tensor, Tensor, List[Tensor], List[Tensor], List[Tensor]) -> Tuple[Tensor, Tensor, Tensor]
     """
     Computes the loss for Faster R-CNN.
 
@@ -27,9 +27,12 @@ def fastrcnn_loss(class_logits, box_regression, labels, regression_targets):
     """
 
     labels = torch.cat(labels, dim=0)
+    depths = torch.cat(depths, dim=0)
     regression_targets = torch.cat(regression_targets, dim=0)
 
     classification_loss = F.cross_entropy(class_logits, labels)
+    depth_class_preds = torch.cat([depth_preds[i:i+1, labels[i]] for i in range(len(depth_preds))], dim=0)
+    depth_loss = F.mse_loss(depth_class_preds, depths)
 
     # get indices that correspond to the regression targets for
     # the corresponding ground truth labels, to be used with
@@ -47,7 +50,7 @@ def fastrcnn_loss(class_logits, box_regression, labels, regression_targets):
     )
     box_loss = box_loss / labels.numel()
 
-    return classification_loss, box_loss
+    return classification_loss, box_loss, depth_loss
 
 
 def maskrcnn_inference(x, labels):
@@ -530,11 +533,12 @@ class RoIHeads(nn.Module):
         self.nms_thresh = nms_thresh
         self.detections_per_img = detections_per_img
 
-    def assign_targets_to_proposals(self, proposals, gt_boxes, gt_labels):
-        # type: (List[Tensor], List[Tensor], List[Tensor]) -> Tuple[List[Tensor], List[Tensor]]
+    def assign_targets_to_proposals(self, proposals, gt_boxes, gt_labels, gt_depths):
+        # type: (List[Tensor], List[Tensor], List[Tensor], List[Tensor]) -> Tuple[List[Tensor], List[Tensor]]
         matched_idxs = []
         labels = []
-        for proposals_in_image, gt_boxes_in_image, gt_labels_in_image in zip(proposals, gt_boxes, gt_labels):
+        depths = []
+        for proposals_in_image, gt_boxes_in_image, gt_labels_in_image, gt_depths_in_image in zip(proposals, gt_boxes, gt_labels, gt_depths):
 
             if gt_boxes_in_image.numel() == 0:
                 # Background image
@@ -543,6 +547,7 @@ class RoIHeads(nn.Module):
                     (proposals_in_image.shape[0],), dtype=torch.int64, device=device
                 )
                 labels_in_image = torch.zeros((proposals_in_image.shape[0],), dtype=torch.int64, device=device)
+                depths_in_image = torch.zeros((proposals_in_image.shape[0],), dtype=torch.int64, device=device)
             else:
                 #  set to self.box_similarity when https://github.com/pytorch/pytorch/issues/27495 lands
                 match_quality_matrix = box_ops.box_iou(gt_boxes_in_image, proposals_in_image)
@@ -552,6 +557,9 @@ class RoIHeads(nn.Module):
 
                 labels_in_image = gt_labels_in_image[clamped_matched_idxs_in_image]
                 labels_in_image = labels_in_image.to(dtype=torch.int64)
+
+                depths_in_image = gt_depths_in_image[clamped_matched_idxs_in_image]
+                depths_in_image = depths_in_image.to(dtype=torch.float64)
 
                 # Label background (below the low threshold)
                 bg_inds = matched_idxs_in_image == self.proposal_matcher.BELOW_LOW_THRESHOLD
@@ -563,7 +571,8 @@ class RoIHeads(nn.Module):
 
             matched_idxs.append(clamped_matched_idxs_in_image)
             labels.append(labels_in_image)
-        return matched_idxs, labels
+            depths.append(depths_in_image)
+        return matched_idxs, labels, depths
 
     def subsample(self, labels):
         # type: (List[Tensor]) -> List[Tensor]
@@ -599,12 +608,13 @@ class RoIHeads(nn.Module):
 
         gt_boxes = [t["boxes"].to(dtype) for t in targets]
         gt_labels = [t["labels"] for t in targets]
+        gt_depths = [t["depths"] for t in targets]
 
         # append ground-truth bboxes to propos
         proposals = self.add_gt_proposals(proposals, gt_boxes)
 
         # get matching gt indices for each proposal
-        matched_idxs, labels = self.assign_targets_to_proposals(proposals, gt_boxes, gt_labels)
+        matched_idxs, labels, depths = self.assign_targets_to_proposals(proposals, gt_boxes, gt_labels, gt_depths)
         # sample a fixed proportion of positive-negative proposals
         sampled_inds = self.subsample(labels)
         matched_gt_boxes = []
@@ -613,6 +623,7 @@ class RoIHeads(nn.Module):
             img_sampled_inds = sampled_inds[img_id]
             proposals[img_id] = proposals[img_id][img_sampled_inds]
             labels[img_id] = labels[img_id][img_sampled_inds]
+            depths[img_id] = depths[img_id][img_sampled_inds]
             matched_idxs[img_id] = matched_idxs[img_id][img_sampled_inds]
 
             gt_boxes_in_image = gt_boxes[img_id]
@@ -621,7 +632,7 @@ class RoIHeads(nn.Module):
             matched_gt_boxes.append(gt_boxes_in_image[matched_idxs[img_id]])
 
         regression_targets = self.box_coder.encode(matched_gt_boxes, proposals)
-        return proposals, matched_idxs, labels, regression_targets
+        return proposals, matched_idxs, labels, depths, regression_targets
 
     def postprocess_detections(
         self,
@@ -711,9 +722,10 @@ class RoIHeads(nn.Module):
                 assert t["labels"].dtype == torch.int64, "target labels must of int64 type"
 
         if self.training:
-            proposals, matched_idxs, labels, regression_targets = self.select_training_samples(proposals, targets)
+            proposals, matched_idxs, labels, depths, regression_targets = self.select_training_samples(proposals, targets)
         else:
             labels = None
+            depths = None
             regression_targets = None
             matched_idxs = None
 
@@ -725,8 +737,9 @@ class RoIHeads(nn.Module):
         losses = {}
         if self.training:
             assert labels is not None and regression_targets is not None
-            loss_classifier, loss_box_reg = fastrcnn_loss(class_logits, box_regression, labels, regression_targets)
-            losses = {"loss_classifier": loss_classifier, "loss_box_reg": loss_box_reg}
+            # print(labels, depths)
+            loss_classifier, loss_box_reg, loss_depth = fastrcnn_loss(class_logits, box_regression, depth_prediction, labels, regression_targets, depths)
+            losses = {"loss_classifier": loss_classifier, "loss_box_reg": loss_box_reg, "loss_depth": loss_depth}
         else:
             boxes, scores, labels, depths = self.postprocess_detections(class_logits, box_regression, depth_prediction, proposals, image_shapes)
             num_images = len(boxes)

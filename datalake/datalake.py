@@ -5,26 +5,12 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-RAW_DATA_TYPES = ['image, bounding_boxes, object_classes, object_depths, image_point_cloud_map']
-TEACHER_DATA_TYPES = []
+RAW_DATA_TYPES = ['image', 'bounding_boxes', 'object_classes', 'object_depths', 'image_point_cloud_map']
+TEACHER_DATA_TYPES = ['object_class_mask']
 
 class Datalake(Dataset):
     def __init__(self, num_data, data_types, path):
-        """ Pass in a list of strings of feature names
-
-            image
-            bounding_boxes
-            object_classes
-            object_depths
-            image_point_cloud_map
-
-            the boxes to object classes and depths have same indexing correspond
-            to same object
-
-            William add ur feature names
-
-            check for bugs tmrw
-        """
+        """ Pass in a list of strings of feature names."""
         self.num_data = num_data
         self.data_types = data_types
         self.waymo_data = \
@@ -32,7 +18,7 @@ class Datalake(Dataset):
         self.teacher_features = \
             sorted(glob.glob('{}/teacher_features/*/*/*.npz'.format(path))[:num_data])
 
-        self.has_teacher_features = len(set(self.data_types) & set(RAW_DATA_TYPES))
+        self.has_teacher_features = len(set(self.data_types) & set(TEACHER_DATA_TYPES))
 
     def __len__(self):
         return self.num_data
@@ -44,7 +30,7 @@ class Datalake(Dataset):
             features = np.load(self.teacher_features[idx])
 
         ret = {}
-        loadpth = self.waymo_data[idx]
+        loadpath = self.waymo_data[idx]
         
         for data_type in self.data_types:
             if data_type in raw:
@@ -53,4 +39,4 @@ class Datalake(Dataset):
                 ret[data_type] = features[data_type]
             else:
                 raise Exception('Datalake: requested datatype {} not present'.format(data_type))
-        return ret, idx, loadpth
+        return ret, idx, loadpath

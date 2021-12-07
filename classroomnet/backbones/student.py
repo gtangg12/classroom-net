@@ -10,31 +10,31 @@ class SimulatedModule(nn.Module):
         self.mean3d, self.std3d, self.mean2d, self.std2d = statistics
 
         self.l1 = nn.Sequential(
-            nn.Conv2d(feature_dim, 512, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(512),
+            nn.Conv2d(feature_dim, 128, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
-            nn.Conv2d(512, 96, kernel_size=1)
+            nn.Conv2d(128, 48, kernel_size=1)
         )
 
         self.l2 = nn.Sequential(
-                nn.Conv2d(96, 96, kernel_size=3, padding=1, bias=False),
-                nn.BatchNorm2d(96),
+                nn.Conv2d(48, 48, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(48),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(96, 96, kernel_size=1),
+                nn.Conv2d(48, 48, kernel_size=1),
                 nn.ReLU(inplace=True)
         )
 
         self.l3 = nn.Sequential(
-                nn.Conv2d(96, 96, kernel_size=3, padding=1, bias=False),
-                nn.BatchNorm2d(96),
+                nn.Conv2d(48, 48, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(48),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(96, 96, kernel_size=1),
+                nn.Conv2d(48, 48, kernel_size=1),
                 nn.ReLU(inplace=True)
         )
 
-        self.bn1 = nn.BatchNorm2d(96)
+        self.bn1 = nn.BatchNorm2d(48)
 
-        self.bn2 = nn.BatchNorm2d(96)
+        self.bn2 = nn.BatchNorm2d(48)
     
     def forward(self, x):
         # DN1
@@ -51,23 +51,30 @@ class SimulatedModule(nn.Module):
 
 
 class StudentModule(nn.Module):
-    def __init__(self, num_teachers, feature_dim, statistics_list): # feature_dim should be 512 with resnet18
+    def __init__(self, num_teachers, feature_dim, statistics_list): # feature_dim should be 128 with resnet18
         super().__init__()
+
         self.num_teachers = num_teachers
         self.resnet = resnet18()
-        self.sim_module_list = [SimulatedModule(feature_dim, statistics_list[i]) for i in range(self.num_teachers)]
+        self.sim_module_list = nn.ModuleList([SimulatedModule(feature_dim, statistics_list[i]) for i in range(self.num_teachers)])
 
         self.cls1 = nn.Sequential(
-            nn.Conv2d(feature_dim, 512, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(512),
+            nn.Conv2d(feature_dim, 128, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
-            nn.Conv2d(512, 96*2, kernel_size=1),
-            nn.BatchNorm2d(96*2),
+            nn.Conv2d(128, 48*2, kernel_size=1),
+            nn.BatchNorm2d(48*2),
             nn.ReLU(inplace=True)
         )
     
     def forward(self, x):
-        x = self.resnet18(x)
+        # print("STARTED BACKBONE")
+
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        x = x.to(device)
+
+        x = self.resnet(x)
+        # print("FINISHED BACKBONE RESNET")
         z_list, z_to_train_list = zip(*[sim_module(x) for sim_module in self.sim_module_list])
         x = self.cls1(x)
         z_dict = {'0': x}
